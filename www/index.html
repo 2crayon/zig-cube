@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>zig-cube</title>
+  </head>
+  <body>
+    <h1>zig-cube thing</h1>
+    <label>
+      X
+      <input id="angle-x" step="0.1" min="0" max="6.3" type="range" />
+    </label>
+    <label>
+      Y
+      <input id="angle-y" step="0.1" min="0" max="6.3" type="range" />
+    </label>
+    <label>
+      Z
+      <input id="angle-z" step="0.1" min="0" max="6.3" type="range" />
+    </label>
+    <br />
+    <label>
+      Camera Distance
+      <input id="cam-dist" step="0.13" min="-10" max="10" type="range" />
+    </label>
+    <canvas style="display: block" id="canvas"></canvas>
+    <script>
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      let w = null;
+
+      WebAssembly.instantiateStreaming(fetch("../zig-out/bin/zig-cube.wasm"), {
+        env: {},
+      }).then((wasmSrc) => {
+        w = wasmSrc;
+        main();
+      });
+
+      function main() {
+        const {
+          get_width,
+          get_height,
+          get_angle_x,
+          set_angle_x,
+          get_angle_y,
+          set_angle_y,
+          get_angle_z,
+          set_angle_z,
+          get_camera_distance,
+          set_camera_distance,
+          get_pixels_buf,
+          render,
+          memory,
+        } = w.instance.exports;
+
+        canvas.width = get_width();
+        canvas.height = get_height();
+
+        const pixelsBuf = get_pixels_buf();
+
+        const angleXRange = document.getElementById("angle-x");
+        angleXRange.value = get_angle_x();
+        const angleYRange = document.getElementById("angle-y");
+        angleYRange.value = get_angle_y();
+        const angleZRange = document.getElementById("angle-z");
+        angleZRange.value = get_angle_z();
+        const camDistRange = document.getElementById("cam-dist");
+        camDistRange.value = get_camera_distance();
+
+        function update() {
+          set_angle_x(angleXRange.value);
+          set_angle_y(angleYRange.value);
+          set_angle_z(angleZRange.value);
+          set_camera_distance(camDistRange.value);
+
+          render();
+          const image = new ImageData(
+            new Uint8ClampedArray(
+              memory.buffer,
+              pixelsBuf,
+              get_width() * get_height() * 4
+            ),
+            get_width()
+          );
+          ctx.putImageData(image, 0, 0);
+
+          requestAnimationFrame(update);
+        }
+
+        update();
+      }
+    </script>
+  </body>
+</html>

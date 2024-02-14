@@ -1,0 +1,15 @@
+.{
+    .name = "zig-cube",
+    .version = "0.0.0",
+    .dependencies = .{
+        // .sdl = .{
+        //     .path = "SDL",
+        // },
+        // .zmath = .{
+        //     .path = "libs/zmath",
+        // },
+    },
+    .paths = .{
+        "",
+    },
+}
