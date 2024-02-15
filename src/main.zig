@@ -3,12 +3,12 @@ const std = @import("std");
 const Vec3 = @Vector(3, f64);
 const Vec2 = @Vector(2, f64);
 
-const WIDTH = 500;
-const HEIGHT = 500;
+const WIDTH = 50;
+const HEIGHT = 50;
 const CENTER_X = WIDTH / 2;
 const CENTER_Y = HEIGHT / 2;
 
-const FINAL_SCALE = 200;
+const FINAL_SCALE = 20;
 
 const RED = rgb(255, 0, 0);
 const BLUE = rgb(0, 0, 255);
@@ -51,8 +51,8 @@ const LINES: [12][2]usize = .{
 
 // ---- Global State ----
 var pixels: [WIDTH * HEIGHT]u32 = undefined;
-// var zbuffer = ...;
-var angle_x: f64 = 0;
+var zbuffer: [pixels.len]f64 = undefined;
+var angle_x: f64 = 0.9;
 var angle_y: f64 = 0;
 var angle_z: f64 = 0;
 var camera_distance: f64 = 1.5;
@@ -74,9 +74,9 @@ fn fill(color: u32) void {
     @memset(&pixels, color);
 }
 
-fn draw_line(x1: i32, y1: i32, color1: u32, x2: i32, y2: i32, color2: u32) void {
+fn draw_line(x1: i32, y1: i32, z_pos1: f64, color1: u32, x2: i32, y2: i32, z_pos2: f64, color2: u32) void {
     if (x1 == x2 and y1 == y2) {
-        draw_point(x1, y1, mix(color1, color2, 0.5));
+        draw_point(x1, y1, mix(color1, color2, 0.5), (z_pos1 + z_pos2) / 2);
         return;
     }
 
@@ -98,7 +98,12 @@ fn draw_line(x1: i32, y1: i32, color1: u32, x2: i32, y2: i32, color2: u32) void 
             var amount =
                 @as(f32, @floatFromInt(dist - x + lx)) / @as(f32, @floatFromInt(dist));
             if (x1 > x2) amount = 1 - amount;
-            draw_point(x, y, mix(color1, color2, amount));
+            draw_point(
+                x,
+                y,
+                mix(color1, color2, amount),
+                z_pos1 * amount + z_pos2 * (1 - amount),
+            );
         }
     } else {
         const dist: i32 = @intCast(@abs(y2 - y1));
@@ -112,7 +117,12 @@ fn draw_line(x1: i32, y1: i32, color1: u32, x2: i32, y2: i32, color2: u32) void 
             var amount =
                 @as(f32, @floatFromInt(dist - y + ly)) / @as(f32, @floatFromInt(dist));
             if (y1 > y2) amount = 1 - amount;
-            draw_point(x, y, mix(color1, color2, amount));
+            draw_point(
+                x,
+                y,
+                mix(color1, color2, amount),
+                z_pos1 * amount + z_pos2 * (1 - amount),
+            );
         }
     }
 }
@@ -136,14 +146,16 @@ fn mix(clr1: u32, clr2: u32, amount: f32) u32 {
     return rgb(r, g, b);
 }
 
-fn draw_point(x: i32, y: i32, color: u32) void {
+fn draw_point(x: i32, y: i32, color: u32, z_pos: f64) void {
     const mapped_x = x + CENTER_X;
     const mapped_y = y + CENTER_Y;
     const out_of_canvas =
         mapped_x < 0 or mapped_x > WIDTH - 1 or mapped_y < 0 or mapped_y > HEIGHT - 1;
-    if (out_of_canvas) return;
-
-    pixels[@intCast(mapped_y * WIDTH + mapped_x)] = color;
+    const index: usize = @intCast(mapped_y * WIDTH + mapped_x);
+    const point_is_behind = zbuffer[index] > z_pos;
+    if (out_of_canvas or point_is_behind) return;
+    zbuffer[index] = z_pos;
+    pixels[index] = color;
 }
 
 fn apply_projection_mat(p: Vec3, proj: [2]Vec3) Vec2 {
@@ -206,6 +218,7 @@ export fn get_pixels_buf() *anyopaque {
 }
 
 export fn render() void {
+    @memset(&zbuffer, -10);
     fill(rgb(20, 20, 20));
 
     const rot_mat_x: [3]Vec3 = .{
@@ -225,6 +238,7 @@ export fn render() void {
     };
 
     var processed_points: [POINTS.len]Vec2 = undefined;
+    var processed_points_z_pos: [POINTS.len]f64 = undefined;
 
     // 3D points to 2D points process
     for (0..POINTS.len) |i| {
@@ -240,22 +254,29 @@ export fn render() void {
         };
         const projected = apply_projection_mat(point, proj_mat);
         processed_points[i] = projected * @as(Vec2, @splat(FINAL_SCALE));
+        processed_points_z_pos[i] = point[2];
     }
 
     // Rasterization of 2D points
     for (LINES) |line| {
         const a = processed_points[line[0]];
         const a_color = POINT_COLORS[line[0]];
+        const a_z_pos = processed_points_z_pos[line[0]];
         const b = processed_points[line[1]];
         const b_color = POINT_COLORS[line[1]];
+        const b_z_pos = processed_points_z_pos[line[1]];
 
         draw_line(
             @intFromFloat(a[0]),
             @intFromFloat(a[1]),
+            a_z_pos,
             a_color,
             @intFromFloat(b[0]),
             @intFromFloat(b[1]),
+            b_z_pos,
             b_color,
         );
     }
 }
+
+extern "env" fn log(n: f64) void;

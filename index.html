@@ -10,15 +10,15 @@
     <h1>zig-cube thing</h1>
     <label>
       X
-      <input id="angle-x" step="0.1" min="0" max="6.3" type="range" />
+      <input id="angle-x" step="0.02" min="0" max="6.3" type="range" />
     </label>
     <label>
       Y
-      <input id="angle-y" step="0.1" min="0" max="6.3" type="range" />
+      <input id="angle-y" step="0.02" min="0" max="6.3" type="range" />
     </label>
     <label>
       Z
-      <input id="angle-z" step="0.1" min="0" max="6.3" type="range" />
+      <input id="angle-z" step="0.02" min="0" max="6.3" type="range" />
     </label>
     <br />
     <label>
@@ -33,7 +33,9 @@
       let w = null;
 
       WebAssembly.instantiateStreaming(fetch("./zig-out/bin/zig-cube.wasm"), {
-        env: {},
+        env: {
+          log: console.log,
+        },
       }).then((wasmSrc) => {
         w = wasmSrc;
         main();
