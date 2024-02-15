@@ -31,6 +31,7 @@
       const canvas = document.getElementById("canvas");
       const ctx = canvas.getContext("2d");
       let w = null;
+      const SCALE = 6;
 
       WebAssembly.instantiateStreaming(fetch("./zig-out/bin/zig-cube.wasm"), {
         env: {
@@ -58,8 +59,10 @@
           memory,
         } = w.instance.exports;
 
-        canvas.width = get_width();
-        canvas.height = get_height();
+        canvas.width = get_width() * SCALE;
+        canvas.height = get_height() * SCALE;
+        ctx.scale(SCALE, SCALE);
+        ctx.imageSmoothingEnabled = false;
 
         const pixelsBuf = get_pixels_buf();
 
@@ -72,7 +75,7 @@
         const camDistRange = document.getElementById("cam-dist");
         camDistRange.value = get_camera_distance();
 
-        function update() {
+        async function update() {
           set_angle_x(angleXRange.value);
           set_angle_y(angleYRange.value);
           set_angle_z(angleZRange.value);
@@ -87,7 +90,8 @@
             ),
             get_width()
           );
-          ctx.putImageData(image, 0, 0);
+          const bitmap = await createImageBitmap(image);
+          ctx.drawImage(bitmap, 0, 0);
 
           requestAnimationFrame(update);
         }

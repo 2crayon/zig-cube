@@ -3,12 +3,12 @@ const std = @import("std");
 const Vec3 = @Vector(3, f64);
 const Vec2 = @Vector(2, f64);
 
-const WIDTH = 50;
-const HEIGHT = 50;
+const WIDTH = 75;
+const HEIGHT = 75;
 const CENTER_X = WIDTH / 2;
 const CENTER_Y = HEIGHT / 2;
 
-const FINAL_SCALE = 20;
+const FINAL_SCALE = 30;
 
 const RED = rgb(255, 0, 0);
 const BLUE = rgb(0, 0, 255);
